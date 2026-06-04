@@ -224,129 +224,82 @@ APPROVE
 
 security PASS (findings=0)
 
-## qa — qa @ 2026-06-04T05:32:42.071464Z
+## qa — qa @ 2026-06-04T07:04:40.100173Z
 
-PASS: The test plan now covers all acceptance criteria, including the `--help` flag, README quick‑start, example blueprints, troubleshooting docs, and onboarding script.  
+PASS: All acceptance criteria are clear and measurable.
 
----
+### 1. Acceptance Criteria
+- README includes a 5-step quick-start guide with commands and expected outputs.
+- Example blueprints are provided for common Kubernetes workloads (e.g., microservices, databases).
+- CLI includes a `--help` flag with usage examples for all commands.
+- Documentation includes a troubleshooting section for common issues.
+- Onboarding flow includes a sample cluster generation script for testing.
 
-## 1. Acceptance Criteria (measurable)
+### 2. Unit Tests
+```javascript
+// Using Jest for demonstration purposes
 
-| # | Criterion | Measurable Check |
-|---|-----------|------------------|
-| 1 | **README** | Contains a 5‑step quick‑start guide with exact commands and expected stdout snippets. |
-| 2 | **Example Blueprints** | At least two YAML files (`microservice.yaml`, `database.yaml`) exist in `examples/` and are syntactically valid Kubernetes manifests. |
-| 3 | **CLI `--help`** | Every top‑level command and subcommand prints a usage section that includes the command name, synopsis, and a list of flags. |
-| 4 | **Troubleshooting Section** | README includes a “Troubleshooting” heading with ≥3 common issues and their fixes. |
-| 5 | **Onboarding Script** | `scripts/generate-cluster.sh` exists, is executable, and when run prints “Cluster generated” and exits with code 0. |
+describe('CLI --help Flag', () => {
+    test('CLI command with --help returns correct usage information', async () => {
+        const result = await runCLICommand('--help');
+        expect(result.stdout).toContain('Usage:');
+        expect(result.stdout).toContain('Options:');
+    });
 
----
+    test('CLI subcommand with --help returns specific usage information', async () => {
+        const result = await runCLICommand('deploy --help');
+        expect(result.stdout).toContain('Usage: deploy');
+        expect(result.stdout).toContain('Options:');
+    });
 
-## 2. Unit Tests (Go + testing package)
-
-```go
-// cli_help_test.go
-package cli_test
-
-import (
-	"bytes"
-	"os/exec"
-	"strings"
-	"testing"
-)
-
-// helper to run the CLI binary with args and capture output
-func runCLI(t *testing.T, args ...string) (stdout, stderr string, err error) {
-	cmd := exec.Command("./cloud-native-blueprints", args...)
-	var outBuf, errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
-	err = cmd.Run()
-	return outBuf.String(), errBuf.String(), err
-}
-
-func TestMainHelp(t *testing.T) {
-	stdout, stderr, err := runCLI(t, "--help")
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-	if !strings.Contains(stdout, "Usage: cloud-native-blueprints") {
-		t.Errorf("Help missing usage line")
-	}
-	if !strings.Contains(stdout, "Commands:") {
-		t.Errorf("Help missing commands list")
-	}
-	if stderr != "" {
-		t.Errorf("Unexpected stderr: %s", stderr)
-	}
-}
-
-func TestSubcommandHelp(t *testing.T) {
-	stdout, stderr, err := runCLI(t, "deploy", "--help")
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-	if !strings.Contains(stdout, "Usage: cloud-native-blueprints deploy") {
-		t.Errorf("Subcommand help missing usage")
-	}
-	if !strings.Contains(stdout, "Flags:") {
-		t.Errorf("Subcommand help missing flags")
-	}
-	if stderr != "" {
-		t.Errorf("Unexpected stderr: %s", stderr)
-	}
-}
-
-func TestInvalidCommandHelp(t *testing.T) {
-	_, stderr, err := runCLI(t, "nonexistent", "--help")
-	if err == nil {
-		t.Fatalf("Expected error for unknown command")
-	}
-	if !strings.Contains(stderr, `unknown command "nonexistent"`) {
-		t.Errorf("Expected unknown command error, got: %s", stderr)
-	}
-}
+    test('CLI invalid command with --help returns error message', async () => {
+        const result = await runCLICommand('invalid-command --help');
+        expect(result.stderr).toContain('Error: unknown command "invalid-command"');
+    });
+});
 ```
 
----
-
-## 3. Integration Tests (Bash + Docker)
-
-### 3.1 Happy Path
-
-| Test | Command | Expected Result |
-|------|---------|-----------------|
-| 1 | `./cloud-native-blueprints --help` | Prints usage, exits 0 |
-| 2 | `./cloud-native-blueprints deploy --help` | Prints deploy usage, exits 0 |
-| 3 | `./cloud-native-blueprints configure --help` | Prints configure usage, exits 0 |
-| 4 | `./cloud-native-blueprints generate-cluster` | Generates cluster, prints “Cluster generated”, exits 0 |
-| 5 | `./cloud-native-blueprints deploy -f examples/microservice.yaml` | Deploys microservice, prints success, exits 0 |
-
-### 3.2 Edge Cases
-
-| Test | Command | Expected Result |
-|------|---------|-----------------|
-| 6 | `./cloud-native-blueprints nonexistent --help` | Error message, exit non‑zero |
-| 7 | `./cloud-native-blueprints --help --verbose` | Still prints help, ignores unknown flag, exits 0 |
-| 8 | `./cloud-native-blueprints deploy --help --dry-run` | Help printed, dry‑run flag ignored, exit 0 |
-
-**Test Script (`integration_test.sh`):**
-
+### 3. Integration Tests
+#### Happy Cases
+- Test that the `--help` flag works for the main CLI command.
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
+# Test Case 1: Main CLI Command Help
+$ ./cloud-native-blueprints --help
+# Expected: Displays general usage and options for the CLI
+```
+- Test that the `--help` flag works for a subcommand.
+```bash
+# Test Case 2: Subcommand Help
+$ ./cloud-native-blueprints deploy --help
+# Expected: Displays usage and options specific to the 'deploy' subcommand
+```
+- Test that the `--help` flag works for another subcommand.
+```bash
+# Test Case 3: Another Subcommand Help
+$ ./cloud-native-blueprints configure --help
+# Expected: Displays usage and options specific to the 'configure' subcommand
+```
 
-function assert_exit_code() {
-  local cmd="$1"
-  local expected="$2"
-  eval "$cmd"
-  local rc=$?
-  if [ "$rc" -ne "$expected" ]; then
-    echo "FAIL: $cmd exited $rc, expected $expected"
-    exit 1
-  fi
-}
+#### Edge Cases
+- Test that an invalid command with `--help` returns an appropriate error message.
+```bash
+# Test Case 4: Invalid Command with --help
+$ ./cloud-native-blueprints non-existent-command --help
+# Expected: Displays an error message indicating the command does not exist
+```
+- Test that the `--help` flag works when combined with other valid flags.
+```bash
+# Test Case 5: --help with Other Valid Flags
+$ ./cloud-native-blueprints --verbose --help
+# Expected: Displays help information despite the presence of other flags
+```
 
-# Happy path
-assert_exit_code "./cloud-native-blueprints --help" 0
-assert_exit_code "
+### 4. Risk Register
+- **Risk**: Incorrect or incomplete help information may confuse users.
+  - **Detection**: Review unit and integration test results for accuracy and completeness of displayed help text.
+  
+- **Risk**: Changes to CLI commands might break existing `--help` functionality.
+  - **Detection**: Regularly update and run integration tests after any CLI modifications to ensure `--help` remains functional.
+
+- **Risk**: Users might overlook the `--help` flag due to poor documentation.
+  - **Detection**: Monitor user feedback and support requests for indications that users are struggling to find or understand the `--help` feature. Adjust documentation as necessary based on this feedback.
