@@ -524,7 +524,7 @@ APPROVE
 
 security PASS (findings=0)
 
-## qa — qa @ 2026-06-04T09:51:00.654568Z
+## qa — qa @ 2026-06-04T15:11:01.801031Z
 
 PASS: The requested TDD‑style test plan for the new `deploy` CLI command is provided below.  
 
