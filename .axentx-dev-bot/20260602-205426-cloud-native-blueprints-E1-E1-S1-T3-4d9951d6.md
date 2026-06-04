@@ -307,7 +307,7 @@ func Validate(b *Blueprint) error {
 
 security PASS (findings=0)
 
-## qa — qa @ 2026-06-04T08:55:01.853004Z
+## qa — qa @ 2026-06-04T13:27:10.880282Z
 
 PASS: Test plan ready for “Add basic validation for generated blueprints”
 
