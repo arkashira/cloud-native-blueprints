@@ -682,101 +682,74 @@ def
 
 security WARN (findings=3)
 
-## qa — qa @ 2026-06-04T08:36:05.949907Z
+## qa — qa @ 2026-06-04T09:59:01.324311Z
 
-PASS: Test plan for adding example blueprints to `/opt/axentx/cloud-native-blueprints/examples/`
+PASS: cloud-native-blueprints
 
----
+**1. Acceptance Criteria**  
+- The `README.md` contains a 5‑step quick‑start guide with exact command snippets and the expected stdout/stderr for each step.  
+- The `/examples` directory includes at least one YAML blueprint for a microservice deployment and one for a database deployment, each with valid K8s manifests.  
+- Every CLI command exposed by the project supports a `--help` flag that prints usage examples and is documented in the README.  
+- The documentation contains a “Troubleshooting” section listing at least three common issues (e.g., missing `kubectl`, wrong context, insufficient RBAC) and their resolutions.  
+- A `generate_cluster.sh` script exists in the onboarding flow that creates a test cluster (e.g., minikube or kind) and outputs a success message.
 
-## 1. Acceptance Criteria
-1. **README**  
-   - Contains a 5‑step quick‑start guide with exact shell commands and the expected stdout/stderr snippets.  
-   - The guide is placed at the root of the repo and is rendered correctly on GitHub (no broken links or missing images).  
-
-2. **Example Blueprints**  
-   - At least three YAML files exist in `/examples`:  
-     - `microservices.yaml` – a simple multi‑service deployment (frontend, backend, redis).  
-     - `database.yaml` – a PostgreSQL deployment with statefulset and headless service.  
-     - `monitoring.yaml` – Prometheus + Grafana stack.  
-   - Each file is syntactically valid Kubernetes manifests (no `kubectl apply` errors).  
-
-3. **CLI Help**  
-   - Running `cloud-native-blueprints --help` prints usage for all commands, including `generate`, `validate`, and `deploy`.  
-   - Help output contains at least one example command for each sub‑command.  
-
-4. **Documentation**  
-   - `docs/troubleshooting.md` exists and lists at least five common issues (e.g., image pull errors, missing CRDs, node affinity problems).  
-   - Each issue includes a concise description, root cause, and resolution steps.  
-
-5. **Onboarding Flow**  
-   - A script `scripts/generate-test-cluster.sh` exists in `/scripts`.  
-   - The script creates a local kind cluster, applies the `microservices.yaml` example, and verifies pods are running within 30 seconds.  
-
-6. **Security**  
-   - No hard‑coded secrets in any example or script.  
-   - All images referenced are from official public registries.  
-
----
-
-## 2. Unit Tests (pseudo‑code)
+**2. Unit Tests (pseudo‑code)**  
 
 ```python
-# tests/test_examples.py
-import os
-import yaml
-import subprocess
-import pytest
+# test_readme_quickstart.py
+def test_readme_contains_quickstart_section():
+    content = read_file("README.md")
+    assert "## Quick‑Start Guide" in content
+    steps = extract_steps(content, section="Quick‑Start Guide")
+    assert len(steps) == 5
+    for step in steps:
+        assert "kubectl" in step or "helm" in step or "docker" in step
 
-EXAMPLES_DIR = "/opt/axentx/cloud-native-blueprints/examples"
+def test_help_flag_output():
+    result = run_cli(["--help"])
+    assert result.exit_code == 0
+    assert "Usage:" in result.stdout
+    assert "Examples:" in result.stdout
 
-@pytest.fixture
-def example_files():
-    return ["microservices.yaml", "database.yaml", "monitoring.yaml"]
+# test_examples_validity.py
+def test_microservice_blueprint_valid():
+    yaml = load_yaml("examples/microservice.yaml")
+    assert yaml["kind"] == "Deployment"
+    assert "app" in yaml["metadata"]["labels"]
 
-def test_example_files_exist(example_files):
-    for f in example_files:
-        assert os.path.isfile(os.path.join(EXAMPLES_DIR, f)), f"{f} missing"
+def test_database_blueprint_valid():
+    yaml = load_yaml("examples/database.yaml")
+    assert yaml["kind"] == "StatefulSet"
+    assert "service" in yaml["metadata"]["labels"]
 
-def test_k8s_yaml_validity(example_files):
-    for f in example_files:
-        with open(os.path.join(EXAMPLES_DIR, f)) as stream:
-            docs = list(yaml.safe_load_all(stream))
-            assert len(docs) > 0, f"{f} contains no documents"
-            for doc in docs:
-                assert isinstance(doc, dict), f"{f} has non‑dict doc"
-                assert "kind" in doc, f"{f} missing kind"
-                assert "metadata" in doc, f"{f} missing metadata"
-
-def test_cli_help_output():
-    result = subprocess.run(["cloud-native-blueprints", "--help"],
-                            capture_output=True, text=True)
-    assert result.returncode == 0
-    help_text = result.stdout
-    assert "generate" in help_text
-    assert "validate" in help_text
-    assert "deploy" in help_text
-    assert "Example:" in help_text
-
-def test_troubleshooting_file():
-    doc_path = "/opt/axentx/cloud-native-blueprints/docs/troubleshooting.md"
-    assert os.path.isfile(doc_path)
-    with open(doc_path) as f:
-        content = f.read()
-    assert "Common Issues" in content
-    assert content.count("-") >= 5  # at least 5 bullet points
-
-def test_cluster_script_exists():
-    script_path = "/opt/axentx/cloud-native-blueprints/scripts/generate-test-cluster.sh"
-    assert os.path.isfile(script_path)
-    assert os.access(script_path, os.X_OK)
+# test_troubleshooting_section.py
+def test_troubleshooting_exists():
+    content = read_file("docs/README.md")
+    assert "## Troubleshooting" in content
+    issues = extract_issues(content, section="Troubleshooting")
+    assert len(issues) >= 3
 ```
 
----
-
-## 3. Integration Tests
+**3. Integration Tests**  
 
 | Test | Description | Expected Result |
 |------|-------------|-----------------|
-| **Happy Path 1** | Run `cloud-native-blueprints generate --example microservices` | Generates a `generated/` directory with valid manifests; `kubectl apply -f generated/` succeeds. |
-| **Happy Path 2** | Execute `scripts/generate-test-cluster.sh` | Kind cluster starts, microservices deployed, all pods reach `Running` state within 30s. |
-| **Happy Path 3** | Validate an invalid manifest (`--validate invalid.yaml`) | CLI returns non‑zero exit 
+| `test_quickstart_creates_cluster` | Run the quick‑start commands against a local kind cluster. | Cluster is created, services are reachable. |
+| `test_blueprint_deploy_microservice` | Apply `examples/microservice.yaml` to the cluster. | Deployment has 1 ready replica, service exposes port. |
+| `test_blueprint_deploy_database` | Apply `examples/database.yaml`. | StatefulSet has 1 ready pod, PVC bound. |
+| `test_help_examples` | Execute `cli --help` and parse examples. | Examples match documented commands. |
+| `test_troubleshooting_missing_kubectl` | Remove `kubectl` from PATH and run a command. | CLI prints clear error and suggests installation. |
+| `test_troubleshooting_wrong_context` | Set an invalid kubeconfig context and run `deploy`. | CLI reports context error and offers `kubectl config use-context`. |
+| `test_troubleshooting_rbac` | Deploy a resource requiring RBAC without permissions. | CLI returns permission denied and links to RBAC guide. |
+
+**4. Risk Register**  
+
+| Risk | Detection | Mitigation |
+|------|-----------|------------|
+| **Invalid YAML in examples** | Unit tests load YAML; failure triggers. | Enforce schema validation with `kubeval` pre‑commit. |
+| **CLI `--help` missing examples** | Unit test checks for “Examples:” string. | Update help generator to include examples automatically. |
+| **README steps out of sync with code** | Integration test runs quick‑start; failures indicate mismatch. | Use a script to auto‑generate README from code comments. |
+| **Cluster generation script fails on CI** | Integration test on CI environment. | Add fallback to use Docker‑based kind and cache images. |
+| **Security findings (3)** | Static analysis tools (Bandit, Trivy). | Review findings, patch insecure dependencies, add CI gate. |
+
+---
