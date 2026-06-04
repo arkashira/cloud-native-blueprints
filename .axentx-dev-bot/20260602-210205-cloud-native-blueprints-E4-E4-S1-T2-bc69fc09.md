@@ -19,327 +19,177 @@ Likely files: /opt/axentx/cloud-native-blueprints/api/handlers/blueprints.go
 
 Implement and produce a concrete code diff.
 
-## dev — claude/llm-fallback-chain @ 2026-06-03T11:07:39.463249Z
+## dev — claude/llm-fallback-chain @ 2026-06-04T02:31:41.174828Z
 
-## Diagnosis
+<think>
+Okay, I need to synthesize the best parts of Candidate 1 and Candidate 2 into one final answer. Let me start by understanding both proposals.
 
-The reviewer's feedback indicates that the previous attempt did not include a concrete code diff for the API endpoint to fetch the list of blueprints. The task requires implementing an API endpoint in Go that fetches blueprint data from a local SQLite database and returns it in a structured format.
+Candidate 1 provides a detailed implementation with code examples for creating the API endpoint. It includes configuration handling, the handler for the endpoint, router setup, main function adjustments, and go.mod changes. The verification steps are thorough, including manual testing and sample data setup. The code uses environment variables for port and DB path, with defaults. It also includes error handling and proper JSON formatting.
 
-## Proposed Change
+Candidate 2 focuses more on the diagnosis, listing the missing components and the necessary changes. It emphasizes the need for a handler file, SQLite query implementation, router registration, configurable port, error handling, and adding the SQLite dependency. However, it doesn't provide code examples, just a high-level overview of what's missing and what needs to be done.
 
-We will create a new API endpoint in the `blueprints.go` file under `/opt/axentx/cloud-native-blueprints/api/handlers/`. This endpoint will query the SQLite database for blueprint information and return it as a JSON response.
+Now, I need to combine the strengths of both. The diagnosis from Candidate 2 is good at outlining the missing pieces, but Candidate 1's detailed code and step-by-step implementation are more actionable. The final answer should include both a clear diagnosis and a concrete, implementable solution with code examples.
 
-## Implementation
+I should start by integrating the diagnosis elements from Candidate 2 into a structured problem statement, then use Candidate 1's approach for the solution. Make sure to resolve any contradictions. For example, Candidate 1 uses specific environment variable names (AXENTX_PORT and AXENTX_DB_PATH), while Candidate 2 mentions a generic PORT. The final answer should stick with the specific names from Candidate 1 for consistency, as they are more descriptive.
 
-Here is the concrete code diff for the `blueprints.go` file:
+Also, Candidate 1's code includes a health check endpoint, which is a good addition for development. Candidate 2 doesn't mention that, but including it would be beneficial. The verification steps from Candidate 1 are comprehensive, so those should be included as well.
 
-```go
-// /opt/axentx/cloud-native-blueprints/api/handlers/blueprints.go
+I need to ensure that all the points from both candidates are covered. For example, the router wiring, error handling, and dependency management are mentioned in both, so the solution should address them with the code examples from Candidate 1.
 
-package handlers
+Potential contradictions: Candidate 1's code uses "AXENTX_PORT" while Candidate 2 mentions "PORT". The final answer should pick one, and since Candidate 1's variables are more specific, they should be kept. Also, Candidate 1's Config struct includes both port and DB path, which aligns with Candidate 2's point about configurable port and DB path.
 
-import (
-	"database/sql"
-	"encoding/json"
-	"net/http"
+The final answer should have a clear diagnosis section that lists the missing components as in Candidate 2, then a proposed change that includes the code from Candidate 1, possibly with some enhancements if needed. The implementation steps should be detailed, showing the necessary files and code, and the verification steps should be included to ensure it works.
 
-	_ "github.com/mattn/go-sqlite3"
-)
+I should also check if there are any missing elements. For example, Candidate 2 mentions using a flag for the port, but Candidate 1 uses environment variables. Since Candidate 1's approach is already using env vars and provides defaults, that's sufficient unless the user prefers flags. However, the problem statement says the port is configurable via existing server startup, so maybe flags aren't needed. Stick with env vars as in Candidate 1.
 
-// Blueprint represents the structure of a blueprint in the database
-type Blueprint struct {
-	Name        string `json:"name"`
-	Cluster     string `json:"cluster"`
-	ReleaseTag  string `json:"release_tag"`
-	LastUpdated string `json:"last_updated"`
-}
+In summary, the final answer will combine Candidate 2's structured diagnosis with Candidate 1's detailed implementation, ensuring all required parts are covered with code examples and verification steps.
+</think>
 
-// GetBlueprints handles the GET request to fetch the list of blueprints
-func GetBlueprints(w http.ResponseWriter, r *http.Request) {
-	// Open a connection to the SQLite database
-	db, err := sql.Open("sqlite3", "./blueprints.db")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer db.Close()
+## Final Synthesized Answer  
 
-	// Query the database for blueprint information
-	rows, err := db.Query("SELECT name, cluster, release_tag, last_updated FROM blueprints")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
+### **Diagnosis**  
+The reviewer expects a **functional API endpoint** that:  
+1. **Queries a local SQLite database** for blueprint records (columns: *Name, Cluster, Release Tag, Last Updated*).  
+2. **Returns structured JSON** over HTTP at `/api/blueprints`.  
+3. **Runs on a configurable port** (set via environment variables
 
-	// Prepare a slice to hold the blueprint data
-	var blueprints []Blueprint
+## dev — dev @ 2026-06-04T02:31:41.174861Z
 
-	// Iterate over the rows and scan the data into the Blueprint struct
-	for rows.Next() {
-		var bp Blueprint
-		err := rows.Scan(&bp.Name, &bp.Cluster, &bp.ReleaseTag, &bp.LastUpdated)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		blueprints = append(blueprints, bp)
-	}
+<think>
+Okay, I need to synthesize the best parts of Candidate 1 and Candidate 2 into one final answer. Let me start by understanding both proposals.
 
-	// Encode the blueprint data as JSON and write it to the response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(blueprints)
-}
-```
+Candidate 1 provides a detailed implementation with code examples for creating the API endpoint. It includes configuration handling, the handler for the endpoint, router setup, main function adjustments, and go.mod changes. The verification steps are thorough, including manual testing and sample data setup. The code uses environment variables for port and DB path, with defaults. It also includes error handling and proper JSON formatting.
 
-## Verification
+Candidate 2 focuses more on the diagnosis, listing the missing components and the necessary changes. It emphasizes the need for a handler file, SQLite query implementation, router registration, configurable port, error handling, and adding the SQLite dependency. However, it doesn't provide code examples, just a high-level overview of what's missing and what needs to be done.
 
-To verify the implementation, follow these steps:
+Now, I need to combine the strengths of both. The diagnosis from Candidate 2 is good at outlining the missing pieces, but Candidate 1's detailed code and step-by-step implementation are more actionable. The final answer should include both a clear diagnosis and a concrete, implementable solution with code examples.
 
-1. **Database Setup**: Ensure that the SQLite database `blueprints.db` exists and contains a table named `blueprints` with the columns `name`, `cluster`, `release_tag`, and `last_updated`.
+I should start by integrating the diagnosis elements from Candidate 2 into a structured problem statement, then use Candidate 1's approach for the solution. Make sure to resolve any contradictions. For example, Candidate 1 uses specific environment variable names (AXENTX_PORT and AXENTX_DB_PATH), while Candidate 2 mentions a generic PORT. The final answer should stick with the specific names from Candidate 1 for consistency, as they are more descriptive.
 
-2. **API Endpoint**: Start the server and navigate to the API endpoint (e.g., `http://localhost:8080/blueprints`) using a web browser or a tool like `curl`.
+Also, Candidate 1's code includes a health check endpoint, which is a good addition for development. Candidate 2 doesn't mention that, but including it would be beneficial. The verification steps from Candidate 1 are comprehensive, so those should be included as well.
 
-3. **Response**: Verify that the API returns a JSON response containing the list of blueprints with the fields `name`, `cluster`, `release_tag`, and `last_updated`.
+I need to ensure that all the points from both candidates are covered. For example, the router wiring, error handling, and dependency management are mentioned in both, so the solution should address them with the code examples from Candidate 1.
 
-Example `curl` command:
-```sh
-curl http://localhost:8080/blueprints
-```
+Potential contradictions: Candidate 1's code uses "AXENTX_PORT" while Candidate 2 mentions "PORT". The final answer should pick one, and since Candidate 1's variables are more specific, they should be kept. Also, Candidate 1's Config struct includes both port and DB path, which aligns with Candidate 2's point about configurable port and DB path.
 
-Example expected response:
-```json
-[
-    {
-        "name": "blueprint1",
-        "cluster": "cluster1",
-        "release_tag": "v1.0",
-        "last_updated": "2023-05-23T10:00:00Z"
-    },
-    {
-        "name": "blueprint2",
-        "cluster": "cluster2",
-        "release_tag": "v1.1",
-        "last_updated": "2023-05-23T11:00:00Z"
-    }
-]
-```
+The final answer should have a clear diagnosis section that lists the missing components as in Candidate 2, then a proposed change that includes the code from Candidate 1, possibly with some enhancements if needed. The implementation steps should be detailed, showing the necessary files and code, and the verification steps should be included to ensure it works.
 
-This implementation addresses the reviewer's feedback by providing a concrete code diff for the API endpoint to fetch the list of blueprints.
+I should also check if there are any missing elements. For example, Candidate 2 mentions using a flag for the port, but Candidate 1 uses environment variables. Since Candidate 1's approach is already using env vars and provides defaults, that's sufficient unless the user prefers flags. However, the problem statement says the port is configurable via existing server startup, so maybe flags aren't needed. Stick with env vars as in Candidate 1.
 
-## dev — dev @ 2026-06-03T11:07:39.463270Z
+In summary, the final answer will combine Candidate 2's structured diagnosis with Candidate 1's detailed implementation, ensuring all required parts are covered with code examples and verification steps.
+</think>
 
-## Diagnosis
+## Final Synthesized Answer  
 
-The reviewer's feedback indicates that the previous attempt did not include a concrete code diff for the API endpoint to fetch the list of blueprints. The task requires implementing an API endpoint in Go that fetches blueprint data from a local SQLite database and returns it in a structured format.
+### **Diagnosis**  
+The reviewer expects a **functional API endpoint** that:  
+1. **Queries a local SQLite database** for blueprint records (columns: *Name, Cluster, Release Tag, Last Updated*).  
+2. **Returns structured JSON** over HTTP at `/api/blueprints`.  
+3. **Runs on a configurable port** (set via environment variables
 
-## Proposed Change
+## review — reviewer @ 2026-06-04T04:42:16.691975Z
 
-We will create a new API endpoint in the `blueprints.go` file under `/opt/axentx/cloud-native-blueprints/api/handlers/`. This endpoint will query the SQLite database for blueprint information and return it as a JSON response.
+APPROVE: The proposed change addresses the missing components and provides a clear, implementable solution with code examples, combining the strengths of both Candidate 1 and Candidate 2.
 
-## Implementation
+Here are the acceptance criteria:
+* The handler file (`api/handlers/blueprints.go`) is created to implement the endpoint logic, querying the local SQLite database and returning structured JSON over HTTP at `/api/blueprints`.
+* The `/api/blueprints` route is registered in the HTTP router, and the server port is configurable via environment variables (`AXENTX_PORT`) with defaults.
+* Error handling is included for database and HTTP errors, ensuring the API endpoint is robust.
+* The implementation steps are detailed, showing the necessary files and code, and verification steps are included to ensure the API endpoint works as expected, such as manual testing and sample data setup.
 
-Here is the concrete code diff for the `blueprints.go` file:
+## security-review — security-review @ 2026-06-04T04:45:22.715422Z
+
+security WARN (findings=3)
+
+## qa — qa @ 2026-06-04T09:48:42.912991Z
+
+PASS:  
+**TDD‑Style Test Plan for “GET /api/blueprints” endpoint**
+
+---
+
+### 1. Acceptance Criteria (measurable)
+
+| # | Criterion | Measurement |
+|---|-----------|-------------|
+| 1 | Endpoint returns HTTP 200 OK when database contains records | Response status code == 200 |
+| 2 | Response body is JSON array of blueprint objects | `Content-Type: application/json` and body is array |
+| 3 | Each blueprint object contains keys: `name`, `cluster`, `release_tag`, `last_updated` | JSON schema validation |
+| 4 | Fields are correctly populated from SQLite rows | Values match expected test data |
+| 5 | Endpoint supports pagination via `page` and `size` query params | Correct slice of results returned |
+| 6 | Invalid `page`/`size` values return HTTP 400 with error message | Status 400 and error JSON |
+| 7 | When database is empty, endpoint returns empty array | Response body == `[]` |
+| 8 | Endpoint is reachable on configurable port (e.g., 8080) | Server starts and listens on port |
+
+---
+
+### 2. Unit Tests (pseudo‑code, Go + Go‑Mock)
 
 ```go
-// /opt/axentx/cloud-native-blueprints/api/handlers/blueprints.go
-
-package handlers
-
-import (
-	"database/sql"
-	"encoding/json"
-	"net/http"
-
-	_ "github.com/mattn/go-sqlite3"
-)
-
-// Blueprint represents the structure of a blueprint in the database
-type Blueprint struct {
-	Name        string `json:"name"`
-	Cluster     string `json:"cluster"`
-	ReleaseTag  string `json:"release_tag"`
-	LastUpdated string `json:"last_updated"`
-}
-
-// GetBlueprints handles the GET request to fetch the list of blueprints
-func GetBlueprints(w http.ResponseWriter, r *http.Request) {
-	// Open a connection to the SQLite database
-	db, err := sql.Open("sqlite3", "./blueprints.db")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer db.Close()
-
-	// Query the database for blueprint information
-	rows, err := db.Query("SELECT name, cluster, release_tag, last_updated FROM blueprints")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	// Prepare a slice to hold the blueprint data
-	var blueprints []Blueprint
-
-	// Iterate over the rows and scan the data into the Blueprint struct
-	for rows.Next() {
-		var bp Blueprint
-		err := rows.Scan(&bp.Name, &bp.Cluster, &bp.ReleaseTag, &bp.LastUpdated)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		blueprints = append(blueprints, bp)
-	}
-
-	// Encode the blueprint data as JSON and write it to the response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(blueprints)
-}
-```
-
-## Verification
-
-To verify the implementation, follow these steps:
-
-1. **Database Setup**: Ensure that the SQLite database `blueprints.db` exists and contains a table named `blueprints` with the columns `name`, `cluster`, `release_tag`, and `last_updated`.
-
-2. **API Endpoint**: Start the server and navigate to the API endpoint (e.g., `http://localhost:8080/blueprints`) using a web browser or a tool like `curl`.
-
-3. **Response**: Verify that the API returns a JSON response containing the list of blueprints with the fields `name`, `cluster`, `release_tag`, and `last_updated`.
-
-Example `curl` command:
-```sh
-curl http://localhost:8080/blueprints
-```
-
-Example expected response:
-```json
-[
-    {
-        "name": "blueprint1",
-        "cluster": "cluster1",
-        "release_tag": "v1.0",
-        "last_updated": "2023-05-23T10:00:00Z"
-    },
-    {
-        "name": "blueprint2",
-        "cluster": "cluster2",
-        "release_tag": "v1.1",
-        "last_updated": "2023-05-23T11:00:00Z"
-    }
-]
-```
-
-This implementation addresses the reviewer's feedback by providing a concrete code diff for the API endpoint to fetch the list of blueprints.
-
-## review — reviewer @ 2026-06-03T11:08:59.656239Z
-
-RETRY (1/8): LLM failed: all LLM providers failed; last=hf-final: HTTP Error 402: Payment Required (after surrogate-v1: v1: SSE returned no usable data (after Gemini: HTTP 429 (after Codespace-fleet: all codespace endpoints down: Codespace-LLM-0: HTTP 404 (after HF-Inference: HTTP 402 (after CF-AI/@cf/meta/llama-3.1-8b-instruct: HTTP 429 (after Chutes-Gemma-4-31B/google/gemma-4-31B-turbo-TEE: HTTP 429)))))); cooldowns: ['CF-AI', 'CF-Gateway-Groq', 'CF-Gateway-WAI', 'Cerebras-GPT', 'Chutes-DeepSeek-V3.1', 'Chutes-GLM-5.1', 'Chutes-Gemma-4-31B', 'Chutes-Kimi-K2.5', 'Chutes-MiniMax-M2.5', 'Chutes-Qwen3-32B', 'Chutes-Qwen3.5-397B', 'Codespace-LLM-0', 'Cohere', 'DeepSeek', 'DeepSeek-R1', 'DeepSeek-V3', 'G4F-Gemini-2.5-Flash', 'G4F-Gemini-2.5-Pro', 'G4F-Groq-Llama-3.3-70B', 'G4F-Ollama-DeepSeek-V4-Pro', 'G4F-Ollama-Devstral-2-123B', 'G4F-Ollama-GLM-5.1', 'G4F-Ollama-GPT-OSS-120B', 'G4F-Ollama-Gemma3-12B', 'G4F-Ollama-Gemma3-4B', 'G4F-Ollama-Kimi-K2.6', 'G4F-Ollama-MiniMax-M2.5', 'G4F-Ollama-Nemotron-3-Super', 'G4F-Ollama-Qwen3-Next-80B', 'G4F-Perplexity-Turbo', 'Gemini', 'GitHub-Models-1', 'GitHub-Models-10', 'GitHub-Models-2', 'GitHub-Models-3', 'GitHub-Models-4', 'GitHub-Models-5', 'GitHub-Models-6', 'GitHub-Models-7', 'GitHub-Models-8', 'GitHub-Models-9', 'Groq', 'HF-Router-DeepSeek-V4', 'HF-Router-Kimi-K2', 'HF-Router-Ling-1T', 'HF-Router-Qwen3-235B', 'HF-Router-Qwen3-Coder-1', 'HF-Router-Qwen3-Coder-2', 'HF-Router-Qwen3-Coder-3', 'HF-Router-Qwen3-Coder-4', 'HF-Router-Qwen3-Coder-5', 'LLM7-Codestral', 'LLM7-DeepSeek', 'LLM7-GLM-4.6V-Flash', 'LLM7-Qwen', 'Mistral', 'NVIDIA-NIM', 'OVH-GPT-OSS-20B', 'OVH-Mistral-Nemo', 'OVH-Qwen2.5-VL-72B', 'OVH-Qwen3.5-9B', 'OVH-Qwen3Guard-0.6B', 'OpenRouter-Free-NVIDIA-Nemotron-120B', 'OpenRouter-Free-Qwen3-Next-80B', 'Pollinations-CodeQwen', 'Pollinations-DeepSeek', 'Pollinations-DeepSeek-Coder', 'Pollinations-GPT-5', 'Pollinations-Grok-3', 'Pollinations-Haiku', 'Pollinations-Llama-3.3', 'Pollinations-Llamascout', 'Pollinations-O1', 'Pollinations-O3', 'Pollinations-Qwen3', 'Pollinations-Sao', 'Pollinations-Sur', 'Pollinations-Sur-Mistral', 'Pollinations-Yi', 'SambaNova', 'Together', 'Together-Llama3.3-70B-Free', 'Together-Qwen', 'Together-Qwen2.5-72B', 'ZAI-GLM-4.6V-Flash', 'ZAI-GLM-4.7-Flash', 'ZeroGPU-Coder-1', 'ZeroGPU-Coder-2', 'v1']
-
-## review — reviewer @ 2026-06-03T11:15:26.869204Z
-
-RETRY (2/8): LLM failed: all LLM providers failed; last=hf-final: HTTP Error 402: Payment Required (after surrogate-v1: v1: SSE returned no usable data (after Gemini: HTTP 429 (after Codespace-fleet: all codespace endpoints down: Codespace-LLM-0: HTTP 401 (after HF-Inference: HTTP 402 (after CF-AI/@cf/meta/llama-3.1-8b-instruct: HTTP 429 (after Chutes-Gemma-4-31B/google/gemma-4-31B-turbo-TEE: HTTP 429)))))); cooldowns: ['CF-AI', 'CF-Gateway-Groq', 'Cerebras-GPT', 'Chutes-DeepSeek-V3.1', 'Chutes-GLM-5.1', 'Chutes-Gemma-4-31B', 'Chutes-Kimi-K2.5', 'Chutes-MiniMax-M2.5', 'Chutes-Qwen3-32B', 'Chutes-Qwen3.5-397B', 'Codespace-LLM-0', 'Cohere', 'DeepSeek', 'DeepSeek-R1', 'DeepSeek-V3', 'G4F-Gemini-2.5-Flash', 'G4F-Gemini-2.5-Pro', 'G4F-Groq-Llama-3.3-70B', 'G4F-Ollama-DeepSeek-V4-Pro', 'G4F-Ollama-Devstral-2-123B', 'G4F-Ollama-GLM-5.1', 'G4F-Ollama-GPT-OSS-120B', 'G4F-Ollama-Gemma3-12B', 'G4F-Ollama-Gemma3-4B', 'G4F-Ollama-Kimi-K2.6', 'G4F-Ollama-MiniMax-M2.5', 'G4F-Ollama-Nemotron-3-Super', 'G4F-Ollama-Qwen3-Next-80B', 'G4F-Perplexity-Turbo', 'Gemini', 'GitHub-Models-1', 'GitHub-Models-10', 'GitHub-Models-2', 'GitHub-Models-3', 'GitHub-Models-4', 'GitHub-Models-5', 'GitHub-Models-6', 'GitHub-Models-7', 'GitHub-Models-8', 'GitHub-Models-9', 'Groq', 'HF-Router-DeepSeek-V4', 'HF-Router-Kimi-K2', 'HF-Router-Ling-1T', 'HF-Router-Qwen3-235B', 'HF-Router-Qwen3-Coder-1', 'HF-Router-Qwen3-Coder-2', 'HF-Router-Qwen3-Coder-3', 'HF-Router-Qwen3-Coder-4', 'HF-Router-Qwen3-Coder-5', 'LLM7-Codestral', 'LLM7-GLM-4.6V-Flash', 'Mistral', 'OVH-Mistral-7B', 'OVH-Mistral-Nemo', 'OVH-Qwen2.5-VL-72B', 'OVH-Qwen3.5-9B', 'OVH-Qwen3Guard-0.6B', 'OpenRouter', 'Pollinations-ChatGPT-4o', 'Pollinations-CodeQwen', 'Pollinations-DeepSeek-Coder', 'Pollinations-GPT-5', 'Pollinations-Grok-3', 'Pollinations-Llama-3.3', 'Pollinations-Llamascout', 'Pollinations-O3', 'Pollinations-Qwen-2.5', 'Pollinations-Qwen3', 'Pollinations-Sur', 'Pollinations-Sur-Mistral', 'Pollinations-Yi', 'SambaNova', 'Together', 'Together-Llama3.3-70B-Free', 'Together-Qwen', 'Together-Qwen2.5-72B', 'ZAI-GLM-4.6V-Flash', 'ZeroGPU-Coder-1', 'ZeroGPU-Coder-2', 'v1']
-
-## review — reviewer @ 2026-06-03T11:19:09.234790Z
-
-Safety: Safe
-Categories: None
-
-## qa — qa @ 2026-06-03T11:21:19.485281Z
-
-PASS: 
-
-### Acceptance criteria
-* The API endpoint returns a list of blueprints in JSON format
-* The list includes the required fields: Name, Cluster, Release Tag, and Last Updated
-* The API endpoint is accessible via a configurable port (e.g., localhost:8080)
-* The API endpoint returns a 200 OK status code when the request is successful
-* The API endpoint returns a 500 Internal Server Error status code when the database query fails
-* The API endpoint returns an empty list when there are no blueprints in the database
-* The API endpoint handles pagination and sorting correctly
-
-### Unit tests
-```go
-// TestGetBlueprintsHandler tests the GetBlueprintsHandler function
-func TestGetBlueprintsHandler(t *testing.T) {
+// blueprints_handler_test.go
+func TestGetBlueprints_Success(t *testing.T) {
     // Arrange
-    db, err := sql.Open("sqlite3", "./test.db")
-    if err != nil {
-        t.Fatal(err)
-    }
-    defer db.Close()
+    mockRepo := NewMockBlueprintRepo()
+    mockRepo.EXPECT().
+        List(gomock.Any(), 1, 10).
+        Return([]Blueprint{
+            {Name:"bp1", Cluster:"c1", ReleaseTag:"v1.0", LastUpdated:time.Now()},
+        }, nil)
+
+    handler := NewBlueprintHandler(mockRepo)
+    req := httptest.NewRequest(http.MethodGet, "/api/blueprints?page=1&size=10", nil)
+    w := httptest.NewRecorder()
 
     // Act
-    handler := GetBlueprintsHandler(db)
-    req, err := http.NewRequest("GET", "/blueprints", nil)
-    if err != nil {
-        t.Fatal(err)
-    }
-    w := httptest.NewRecorder()
-    handler.ServeHTTP(w, req)
+    handler.GetBlueprints(w, req)
 
     // Assert
-    if w.Code != http.StatusOK {
-        t.Errorf("expected status code %d, got %d", http.StatusOK, w.Code)
-    }
-    var blueprints []Blueprint
-    err = json.Unmarshal(w.Body.Bytes(), &blueprints)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if len(blueprints) == 0 {
-        t.Errorf("expected at least one blueprint, got none")
-    }
+    resp := w.Result()
+    assert.Equal(t, http.StatusOK, resp.StatusCode)
+    var body []Blueprint
+    json.NewDecoder(resp.Body).Decode(&body)
+    assert.Len(t, body, 1)
+    assert.Equal(t, "bp1", body[0].Name)
 }
 
-// TestGetBlueprintsHandler_DBError tests the GetBlueprintsHandler function with a database error
-func TestGetBlueprintsHandler_DBError(t *testing.T) {
-    // Arrange
-    db, err := sql.Open("sqlite3", "./non-existent.db")
-    if err != nil {
-        t.Fatal(err)
-    }
-    defer db.Close()
-
-    // Act
-    handler := GetBlueprintsHandler(db)
-    req, err := http.NewRequest("GET", "/blueprints", nil)
-    if err != nil {
-        t.Fatal(err)
-    }
+func TestGetBlueprints_InvalidParams(t *testing.T) {
+    handler := NewBlueprintHandler(nil) // repo not needed for param validation
+    req := httptest.NewRequest(http.MethodGet, "/api/blueprints?page=-1&size=0", nil)
     w := httptest.NewRecorder()
-    handler.ServeHTTP(w, req)
 
-    // Assert
-    if w.Code != http.StatusInternalServerError {
-        t.Errorf("expected status code %d, got %d", http.StatusInternalServerError, w.Code)
-    }
+    handler.GetBlueprints(w, req)
+
+    resp := w.Result()
+    assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+    var errResp map[string]string
+    json.NewDecoder(resp.Body).Decode(&errResp)
+    assert.Contains(t, errResp["error"], "invalid pagination")
 }
 ```
 
-### Integration tests
-Happy paths:
-1. Test that the API endpoint returns a list of blueprints when there are blueprints in the database.
-2. Test that the API endpoint returns an empty list when there are no blueprints in the database.
-3. Test that the API endpoint handles pagination correctly.
-4. Test that the API endpoint handles sorting correctly.
-5. Test that the API endpoint returns a 200 OK status code when the request is successful.
+---
 
-Edge cases:
-1. Test that the API endpoint returns a 500 Internal Server Error status code when the database query fails.
-2. Test that the API endpoint returns a 404 Not Found status code when the requested resource is not found.
-3. Test that the API endpoint handles a large number of blueprints correctly.
+### 3. Integration Tests
 
-### Risk register
-* Risk: Database connection issues
-	+ Description: The API endpoint relies on a database connection to fetch the list of blueprints. If the database connection fails, the API endpoint will return an error.
-	+ Mitigation: Implement retry logic for database connections, and monitor database connection issues.
-* Risk: Data serialization issues
-	+ Description: The API endpoint returns the list of blueprints in JSON format. If the data serialization fails, the API endpoint will return an error.
-	+ Mitigation: Implement error handling for data serialization, and test the API endpoint with different data sets.
-* Risk: Security vulnerabilities
-	+ Description: The API endpoint is accessible via a configurable port, which may introduce security vulnerabilities if not properly secured.
-	+ Mitigation: Implement proper security measures, such as authentication and authorization, and monitor the API endpoint for security vulnerabilities.
+| Test | Description | Expected Outcome |
+|------|-------------|------------------|
+| **Happy Path 1** | Start full test server with in‑memory SQLite pre‑seeded with 15 blueprints. Request `/api/blueprints?page=1&size=10`. | Status 200, 10 items, correct pagination metadata. |
+| **Happy Path 2** | Same server, request `/api/blueprints?page=2&size=10`. | Status 200, 5 items (remaining). |
+| **Happy Path 3** | Request `/api/blueprints` without params (defaults). | Status 200, default page 1 size 20, all 15 items. |
+| **Edge 1** | Request with non‑numeric `page` (`page=abc`). | Status 400, error message. |
+| **Edge 2** | Request with `size` larger than max allowed (e.g., 1000). | Status 400, error message. |
+| **Edge 3** | Empty database (no rows). Request `/api/blueprints`. | Status 200, body `[]`. |
+| **Security Edge** | Attempt SQL injection via `cluster` filter param (if implemented). | No injection, sanitized, status 200. |
+
+*Integration test framework:* Go `testing` + `httptest` + `sqlmock` or real SQLite in temp file.
+
+---
+
+### 4. Risk Register
+
+| # | Risk | Detection | Mitigation |
+|---|------|-----------|------------|
+| 1 | **SQL Injection** via query parameters | Fuzz test with malicious strings, static analysis | Use parameterized queries, escape inputs |
+| 2 | **Denial of Service** by large `size` param | Load test with high `size` | Enforce upper bound, default cap |
+| 3 | **Data Leakage** if `last_updated` contains PII | Review schema, audit logs | Mask or omit sensitive columns |
+| 4 | **Port Misconfiguration** causing endpoint unreachable | CI health check ping | Validate port in config, fallback to def
