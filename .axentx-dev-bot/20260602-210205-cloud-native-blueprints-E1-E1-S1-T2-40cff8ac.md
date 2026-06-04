@@ -368,118 +368,91 @@ func TestClusterConnectivity(w http.ResponseWriter, r *http.Request) {
 
 security PASS (findings=0)
 
-## qa — qa @ 2026-06-04T06:36:39.362265Z
+## qa — qa @ 2026-06-04T14:02:04.488897Z
 
 PASS:  
 
-**1. Acceptance Criteria**  
-- **AC1:** The endpoint accepts a JSON body containing **exactly one** of the following fields:  
-  - `kubeconfigPath` – a filesystem path to a kubeconfig file, **or**  
-  - `kubeconfigContent` – a base64‑encoded string of the kubeconfig.  
-  Any other combination (both present, none present, or unsupported keys) results in **400 Bad Request**.  
-- **AC2:** When a valid kubeconfig is supplied, the handler loads the configuration, creates a Kubernetes client, and performs a `GET /api` request to the API server.  
-- **AC3:** If the API server responds with HTTP 200, the endpoint returns **200 OK** with JSON:  
-  ```json
-  { "status": "connected", "serverVersion": "<semver>" }
-  ```  
-- **AC4:** If the kubeconfig is syntactically invalid, unreadable, or missing, the endpoint returns **400 Bad Request** with JSON:  
-  ```json
-  { "error": "Invalid kubeconfig" }
-  ```  
-- **AC5:** If the API server is unreachable, times out, or returns a non‑200 status, the endpoint returns **502 Bad Gateway** with JSON:  
-  ```json
-  { "error": "Cluster unreachable" }
-  ```  
-- **AC6:** If the client lacks permission to perform the health check (e.g., RBAC denies), the endpoint returns **403 Forbidden** with JSON:  
-  ```json
-  { "error": "Insufficient permissions" }
-  ```  
-- **AC7:** All error responses include a unique `X-Request-ID` header for traceability.  
-- **AC8:** No kubeconfig data is logged or returned in any response.  
+**1. Acceptance Criteria**
+- **AC1:** The API accepts a POST request with either a `kubeconfigPath` (string) or a `kubeconfigContent` (base64‑encoded string) in the JSON body. Exactly one of these fields must be present; otherwise a 400 response is returned.
+- **AC2:** When a valid kubeconfig is supplied, the handler loads the config, creates a clientset, and performs a `GET /healthz` (or `GET /api`) request to the Kubernetes API server. If the request succeeds (HTTP 200), the endpoint returns `200 OK` with JSON `{ "status": "connected", "serverVersion": "<semver>" }`.
+- **AC3:** If the kubeconfig is syntactically invalid, missing, or the file cannot be read, the endpoint returns `400 Bad Request` with JSON `{ "error": "Invalid kubeconfig" }`.
+- **AC4:** If the API server is unreachable, times out, or returns a non‑200 status, the endpoint returns `502 Bad Gateway` with JSON `{ "error": "Cluster unreachable" }`.
+- **AC5:** If the client lacks permission to perform the health check (e.g., RBAC denies), the endpoint returns `403 Forbidden` with JSON `{ "error": "Insufficient permissions" }`.
+- **AC6:** All error responses include a unique `requestId` header for traceability and do not leak raw kubeconfig data.
+- **AC7:** The endpoint logs the attempt (masked) at INFO level and logs failures at WARN level without persisting the kubeconfig.
 
-**2. Unit Tests** (Go, `testing` + `stretchr/testify`)  
+---
+
+**2. Unit Tests** (using Go’s `testing` package and `github.com/stretchr/testify/assert`)
 
 ```go
-// cluster_test.go
-package handlers_test
+func TestValidateRequestBody(t *testing.T) {
+    // valid path only
+    body := `{"kubeconfigPath":"/tmp/kc.yaml"}`
+    req := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/connect", strings.NewReader(body))
+    rec := httptest.NewRecorder()
+    handler := http.HandlerFunc(handlers.ClusterConnect)
 
-import (
-    "bytes"
-    "encoding/base64"
-    "encoding/json"
-    "net/http"
-    "net/http/httptest"
-    "testing"
-
-    "github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/mock"
-
-    "axentx/cloud-native-blueprints/api/handlers"
-)
-
-// Mock for Kubernetes client that simulates API responses
-type mockKubeClient struct {
-    mock.Mock
+    handler.ServeHTTP(rec, req)
+    assert.NotEqual(t, http.StatusBadRequest, rec.Code) // passes to next stage
 }
 
-func (m *mockKubeClient) GetAPIVersion() (string, error) {
-    args := m.Called()
-    return args.String(0), args.Error(1)
+func TestRejectBothFields(t *testing.T) {
+    body := `{"kubeconfigPath":"/tmp/kc.yaml","kubeconfigContent":"abcd"}`
+    req := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/connect", strings.NewReader(body))
+    rec := httptest.NewRecorder()
+    handlers.ClusterConnect(rec, req)
+
+    assert.Equal(t, http.StatusBadRequest, rec.Code)
+    assert.Contains(t, rec.Body.String(), "Exactly one of")
 }
 
-func TestValidPathSuccess(t *testing.T) {
-    // Arrange
-    body := map[string]string{"kubeconfigPath": "/tmp/kc.yaml"}
-    b, _ := json.Marshal(body)
-    req := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/connect", bytes.NewReader(b))
+func TestRejectMissingFields(t *testing.T) {
+    body := `{}` // empty JSON
+    req := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/connect", strings.NewReader(body))
+    rec := httptest.NewRecorder()
+    handlers.ClusterConnect(rec, req)
+
+    assert.Equal(t, http.StatusBadRequest, rec.Code)
+    assert.Contains(t, rec.Body.String(), "Exactly one of")
+}
+```
+
+*Mocking the Kubernetes client* (using `k8s.io/client-go/kubernetes/fake`)
+
+```go
+func TestSuccessfulPing_WithPath(t *testing.T) {
+    // create a temporary valid kubeconfig pointing to a fake server
+    tmpFile := createTempKubeconfig(t, fakeServerURL)
+    defer os.Remove(tmpFile)
+
+    body := fmt.Sprintf(`{"kubeconfigPath":"%s"}`, tmpFile)
+    req := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/connect", strings.NewReader(body))
     rec := httptest.NewRecorder()
 
-    // Stub file read and client creation
-    handlers.SetKubeClientFactory(func(string) (handlers.KubeClient, error) {
-        return &mockKubeClient{}, nil
+    // inject a fake clientset that returns 200 on /healthz
+    handlers.SetClientFactory(func(cfg *rest.Config) (kubernetes.Interface, error) {
+        return fake.NewSimpleClientset(), nil
     })
-    mockClient := handlers.GetKubeClientFactory("/tmp/kc.yaml")
-    mockClient.(*mockKubeClient).On("GetAPIVersion").Return("v1.28.0", nil)
 
-    // Act
     handlers.ClusterConnect(rec, req)
 
-    // Assert
     assert.Equal(t, http.StatusOK, rec.Code)
-    var resp map[string]string
-    json.Unmarshal(rec.Body.Bytes(), &resp)
-    assert.Equal(t, "connected", resp["status"])
-    assert.Equal(t, "v1.28.0", resp["serverVersion"])
+    var resp struct{ Status, ServerVersion string }
+    json.NewDecoder(rec.Body).Decode(&resp)
+    assert.Equal(t, "connected", resp.Status)
+    assert.NotEmpty(t, resp.ServerVersion)
 }
+```
 
-func TestBothFieldsPresent(t *testing.T) {
-    body := map[string]string{
-        "kubeconfigPath":     "/tmp/kc.yaml",
-        "kubeconfigContent":  base64.StdEncoding.EncodeToString([]byte("dummy")),
-    }
-    b, _ := json.Marshal(body)
-    req := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/connect", bytes.NewReader(b))
+*Error paths*
+
+```go
+func TestInvalidKubeconfigPath(t *testing.T) {
+    body := `{"kubeconfigPath":"/non/existent/file.yaml"}`
+    req := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/connect", strings.NewReader(body))
     rec := httptest.NewRecorder()
-
     handlers.ClusterConnect(rec, req)
 
     assert.Equal(t, http.StatusBadRequest, rec.Code)
-    assert.Contains(t, rec.Body.String(), "exactly one of")
-}
-
-func TestMissingFields(t *testing.T) {
-    body := map[string]string{}
-    b, _ := json.Marshal(body)
-    req := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/connect", bytes.NewReader(b))
-    rec := httptest.NewRecorder()
-
-    handlers.ClusterConnect(rec, req)
-
-    assert.Equal(t, http.StatusBadRequest, rec.Code)
-    assert.Contains(t, rec.Body.String(), "exactly one of")
-}
-
-func TestInvalidKubeconfig(t *testing.T) {
-    body := map[string]string{"kubeconfigPath": "/non/existent.yaml"}
-    b, _ := json.Marshal(body)
-    
+    assert.Contains(t, r
