@@ -288,55 +288,168 @@ Success Metrics:
 
 security PASS (findings=0)
 
-## qa — qa @ 2026-06-04T19:10:43.376454Z
+## qa — qa @ 2026-06-04T23:13:38.076941Z
 
-PASS: All requirements met — TDD test plan fully compliant with output contract
+**PASS:** TDD test plan for cloud-native-blueprints
 
-1. **Acceptance criteria**  
-- System successfully extracts Deployments, Services, and ConfigMaps from a live Kubernetes cluster by default without manual filtering  
-- Generated Terraform HCL output is syntactically valid and passes `terraform validate` in a clean environment  
-- Blueprint generation completes within 30 seconds for clusters containing fewer than 500 total resources (measured from API response to HCL write)  
-- Extracted resources include all required fields for minimal Terraform recreation (e.g., metadata.name, spec.template.spec.containers for Deployments)  
-- Output supports configurable namespace scope (default: all namespaces)  
+### Acceptance Criteria
 
-2. **Unit tests** (Pytest style)  
-```python
-def test_extract_deployments_returns_list_of_dicts_with_required_keys(k8s_client_mock):
-    resources = extract_k8s_resources(k8s_client_mock, resource_types=["Deployment"])
-    assert all("apiVersion" in r for r in resources)
-    assert all("kind" in r for r in resources)
-    assert all("metadata" in r and "name" in r["metadata"] for r in resources)
-    assert all("spec" in r for r in resources)
+1. The system extracts Deployments, Services, and ConfigMaps by default.
+2. The generated output is valid Terraform HCL syntax.
+3. Blueprint generation completes in under 30 seconds for clusters with <500 resources.
+4. The `fetcher.go` file implements resource fetching logic for core K8s types.
+5. The `fetcher.go` file handles errors and edge cases correctly.
 
-def test_generate_terraform_hcl_returns_string_with_terraform_syntax(sample_extracted_resources):
-    hcl_output = generate_terraform_blueprint(sample_extracted_resources)
-    assert isinstance(hcl_output, str)
-    assert "resource \"" in hcl_output
-    assert "provider \"kubernetes\"" in hcl_output
+### Unit Tests (fetcher.go)
 
-def test_performance_under_30_seconds_for_500_resources(benchmark, large_cluster_mock):
-    result = benchmark.pedantic(generate_terraform_blueprint, args=(large_cluster_mock,), iterations=1, rounds=5)
-    assert benchmark.stats['mean'] < 30.0
+```go
+package internal/cluster
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+)
+
+func TestFetchDeployments(t *testing.T) {
+	// Arrange
+	cluster := &Cluster{}
+	deployments := []unstructured.Unstructured{}
+
+	// Act
+	err := cluster.FetchDeployments(deployments)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Len(t, deployments, 0)
+}
+
+func TestFetchServices(t *testing.T) {
+	// Arrange
+	cluster := &Cluster{}
+	services := []unstructured.Unstructured{}
+
+	// Act
+	err := cluster.FetchServices(services)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Len(t, services, 0)
+}
+
+func TestFetchConfigMaps(t *testing.T) {
+	// Arrange
+	cluster := &Cluster{}
+	configMaps := []unstructured.Unstructured{}
+
+	// Act
+	err := cluster.FetchConfigMaps(configMaps)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Len(t, configMaps, 0)
+}
 ```
 
-3. **Integration tests**  
-**Happy paths:**  
-- Cluster with 50 Deployments, 30 Services, 20 ConfigMaps → generates valid HCL with all resources represented  
-- Single namespace filtered extraction → only resources from specified namespace are included  
-- Empty cluster → returns valid but empty Terraform configuration (no syntax errors)  
-- Cluster with mixed supported/unsupported resource types → only Deployments, Services, and ConfigMaps are extracted  
+### Integration Tests (fetcher.go)
 
-**Edge cases:**  
-- Resource with invalid/missing metadata.name → gracefully skipped with warning logged  
-- API timeout during list operations → fails with descriptive error, does not produce partial HCL  
+```go
+package internal/cluster
 
-4. **Risk register**  
-- **Risk:** Incomplete resource field extraction leading to non-functional Terraform apply  
-  - *Detection:* Pre-commit hook runs `terraform validate` on generated output  
-  - *Mitigation:* Use structured schema mapping per resource type with required field assertions  
-- **Risk:** Performance degradation on large clusters due to unoptimized API polling  
-  - *Detection:* Monitor execution time in CI using synthetic large clusters  
-  - *Mitigation:* Implement parallel list operations per resource type and namespace  
-- **Risk:** Misuse of bearer token or RBAC escalation via k8s client config  
-  - *Detection:* Static analysis in CI flags insecure client instantiation patterns  
-  - *Mitigation:* Enforce use of scoped service account tokens with read-only access via reviewer gate
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+)
+
+func TestFetchDeploymentsIntegration(t *testing.T) {
+	// Arrange
+	cluster := &Cluster{}
+	deployments := []unstructured.Unstructured{}
+
+	// Act
+	err := cluster.FetchDeployments(deployments)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Len(t, deployments, 5) // expected number of deployments
+}
+
+func TestFetchServicesIntegration(t *testing.T) {
+	// Arrange
+	cluster := &Cluster{}
+	services := []unstructured.Unstructured{}
+
+	// Act
+	err := cluster.FetchServices(services)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Len(t, services, 3) // expected number of services
+}
+
+func TestFetchConfigMapsIntegration(t *testing.T) {
+	// Arrange
+	cluster := &Cluster{}
+	configMaps := []unstructured.Unstructured{}
+
+	// Act
+	err := cluster.FetchConfigMaps(configMaps)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Len(t, configMaps, 2) // expected number of config maps
+}
+
+func TestFetchDeploymentsEdgeCase(t *testing.T) {
+	// Arrange
+	cluster := &Cluster{}
+	deployments := []unstructured.Unstructured{}
+
+	// Act
+	err := cluster.FetchDeployments(deployments)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no deployments found")
+}
+
+func TestFetchServicesEdgeCase(t *testing.T) {
+	// Arrange
+	cluster := &Cluster{}
+	services := []unstructured.Unstructured{}
+
+	// Act
+	err := cluster.FetchServices(services)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no services found")
+}
+
+func TestFetchConfigMapsEdgeCase(t *testing.T) {
+	// Arrange
+	cluster := &Cluster{}
+	configMaps := []unstructured.Unstructured{}
+
+	// Act
+	err := cluster.FetchConfigMaps(configMaps)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no config maps found")
+}
+```
+
+### Risk Register
+
+1. **Resource extraction failure**: The `fetcher.go` file may fail to extract resources from the Kubernetes cluster, causing the blueprint generation to fail.
+	* Detection: Log errors and exceptions during resource extraction.
+	* Mitigation: Implement retry logic and error handling in the `fetcher.go` file.
+2. **Invalid Terraform HCL syntax**: The generated Terraform blueprint may contain invalid HCL syntax, causing the infrastructure deployment to fail.
+	* Detection: Validate the generated Terraform blueprint using a HCL linter.
+	* Mitigation: Implement a HCL linter in the `fetcher.go` file to ensure valid syntax.
+3. **Performance issues**: The blueprint generation may take longer than 30 seconds for clusters with >500 resources, causing performance issues.
+	* 
