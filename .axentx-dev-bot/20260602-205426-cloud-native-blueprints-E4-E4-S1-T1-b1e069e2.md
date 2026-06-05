@@ -526,168 +526,90 @@ security PASS (findings=0)
 
 RETRY (2/8): LLM failed: Remote end closed connection without response
 
-## qa — qa @ 2026-06-04T22:47:48.717731Z
+## qa — qa @ 2026-06-05T05:02:04.220165Z
 
-**PASS:**
+PASS:  
 
-## Acceptance criteria
+**1. Acceptance Criteria**  
+- The deployer accepts a `targetCluster` and `namespace` string parameters and uses them to create resources in the correct cluster and namespace.  
+- Resource creation respects the `resourceLimits` specified in the blueprint; if limits are exceeded the deployer aborts and returns an error.  
+- The deployer checks for existing services with the same name in the target namespace and fails with a clear conflict error.  
+- A `dryRun` boolean flag causes the deployer to simulate the deployment, returning a detailed diff without applying changes.  
+- On success or failure, the deployer returns a notification object containing status, applied resource list, and any error messages.  
+- All deployment actions are logged to a persistent audit log with timestamp, cluster, namespace, and operation details.  
 
-1. The user can specify a target cluster and namespace for deployment.
-2. The deployment respects resource limits and avoids conflicts (e.g., same service name).
-3. The user receives a success/failure notification with details of applied resources.
-4. Dry-run mode is available to preview changes before applying.
-5. Deployment logs are stored for auditability.
+**2. Unit Tests (pseudo‑code, Jest style)**  
 
-## Unit tests
+```js
+describe('Deployer', () => {
+  let deployer;
 
-```javascript
-// deployer_test.go
-package deployer
+  beforeEach(() => {
+    deployer = new Deployer(mockK8sClient, mockLogger);
+  });
 
-import (
-	"testing"
+  test('applies resources to specified cluster and namespace', async () => {
+    await deployer.deploy('clusterA', 'dev', blueprint, false);
+    expect(mockK8sClient.apply).toHaveBeenCalledWith(
+      expect.objectContaining({ namespace: 'dev' })
+    );
+    expect(mockK8sClient.apply).toHaveBeenCalledWith(
+      expect.objectContaining({ cluster: 'clusterA' })
+    );
+  });
 
-	"github.com/stretchr/testify/assert"
-)
+  test('aborts when resource limits are exceeded', async () => {
+    const overLimitBlueprint = { resources: [{ limits: { cpu: '10', memory: '20Gi' } }] };
+    await expect(
+      deployer.deploy('clusterA', 'dev', overLimitBlueprint, false)
+    ).rejects.toThrow('Resource limits exceeded');
+  });
 
-func TestDeployer_New(t *testing.T) {
-	deployer := NewDeployer()
-	assert.NotNil(t, deployer)
-}
+  test('detects service name conflicts', async () => {
+    mockK8sClient.checkExists.mockResolvedValue(true);
+    await expect(
+      deployer.deploy('clusterA', 'dev', blueprint, false)
+    ).rejects.toThrow('Service name conflict');
+  });
 
-func TestDeployer_Deploy(t *testing.T) {
-	// Arrange
-	deployer := NewDeployer()
-	targetCluster := "test-cluster"
-	namespace := "test-namespace"
-	blueprint := "test-blueprint"
+  test('dryRun returns diff without applying', async () => {
+    const diff = await deployer.deploy('clusterA', 'dev', blueprint, true);
+    expect(diff).toHaveProperty('diff');
+    expect(mockK8sClient.apply).not.toHaveBeenCalled();
+  });
 
-	// Act
-	err := deployer.Deploy(targetCluster, namespace, blueprint)
+  test('returns notification on success', async () => {
+    const result = await deployer.deploy('clusterA', 'dev', blueprint, false);
+    expect(result.status).toBe('success');
+    expect(result.appliedResources).toContain('deployment/my-app');
+  });
 
-	// Assert
-	assert.NoError(t, err)
-}
-
-func TestDeployer_Deploy_DryRun(t *testing.T) {
-	// Arrange
-	deployer := NewDeployer()
-	targetCluster := "test-cluster"
-	namespace := "test-namespace"
-	blueprint := "test-blueprint"
-
-	// Act
-	err := deployer.DeployDryRun(targetCluster, namespace, blueprint)
-
-	// Assert
-	assert.NoError(t, err)
-}
-
-func TestDeployer_Deploy_ResourceLimit(t *testing.T) {
-	// Arrange
-	deployer := NewDeployer()
-	targetCluster := "test-cluster"
-	namespace := "test-namespace"
-	blueprint := "test-blueprint"
-	resourceLimit := "test-resource-limit"
-
-	// Act
-	err := deployer.DeployWithResourceLimit(targetCluster, namespace, blueprint, resourceLimit)
-
-	// Assert
-	assert.NoError(t, err)
-}
+  test('logs deployment actions', async () => {
+    await deployer.deploy('clusterA', 'dev', blueprint, false);
+    expect(mockLogger.audit).toHaveBeenCalledWith(
+      expect.objectContaining({ cluster: 'clusterA', namespace: 'dev' })
+    );
+  });
+});
 ```
 
-## Integration tests
+**3. Integration Tests**
 
-```javascript
-// deployer_integration_test.go
-package deployer
+| Test # | Scenario | Expected Outcome |
+|--------|----------|------------------|
+| 1 | Deploy a valid blueprint to a fresh cluster/namespace | Resources created, success notification, audit log entry |
+| 2 | Deploy same blueprint again (conflict) | Failure notification with conflict error, no resources duplicated |
+| 3 | Deploy with `dryRun=true` | No resources created, diff returned, audit log records dry‑run |
+| 4 | Deploy with resource limits within bounds | Success, resources respect limits |
+| 5 | Deploy with resource limits exceeded | Failure, no resources applied, error logged |
+| 6 | Deploy to non‑existent cluster | Failure, error indicating cluster unreachable |
+| 7 | Deploy to namespace that already has a service with same name | Failure, conflict error, audit log records attempt |
 
-import (
-	"testing"
+**4. Risk Register**
 
-	"github.com/stretchr/testify/assert"
-)
-
-func TestDeployer_Deploy_Integration(t *testing.T) {
-	// Arrange
-	deployer := NewDeployer()
-	targetCluster := "test-cluster"
-	namespace := "test-namespace"
-	blueprint := "test-blueprint"
-
-	// Act
-	err := deployer.Deploy(targetCluster, namespace, blueprint)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotEmpty(t, deployer.GetDeploymentLogs())
-}
-
-func TestDeployer_Deploy_DryRun_Integration(t *testing.T) {
-	// Arrange
-	deployer := NewDeployer()
-	targetCluster := "test-cluster"
-	namespace := "test-namespace"
-	blueprint := "test-blueprint"
-
-	// Act
-	err := deployer.DeployDryRun(targetCluster, namespace, blueprint)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotEmpty(t, deployer.GetDryRunLogs())
-}
-
-func TestDeployer_Deploy_ResourceLimit_Integration(t *testing.T) {
-	// Arrange
-	deployer := NewDeployer()
-	targetCluster := "test-cluster"
-	namespace := "test-namespace"
-	blueprint := "test-blueprint"
-	resourceLimit := "test-resource-limit"
-
-	// Act
-	err := deployer.DeployWithResourceLimit(targetCluster, namespace, blueprint, resourceLimit)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotEmpty(t, deployer.GetDeploymentLogs())
-}
-
-func TestDeployer_Deploy_Conflict_Integration(t *testing.T) {
-	// Arrange
-	deployer := NewDeployer()
-	targetCluster := "test-cluster"
-	namespace := "test-namespace"
-	blueprint := "test-blueprint"
-
-	// Act
-	err := deployer.Deploy(targetCluster, namespace, blueprint)
-
-	// Assert
-	assert.Error(t, err)
-}
-
-func TestDeployer_Deploy_ResourceLimit_Conflict_Integration(t *testing.T) {
-	// Arrange
-	deployer := NewDeployer()
-	targetCluster := "test-cluster"
-	namespace := "test-namespace"
-	blueprint := "test-blueprint"
-	resourceLimit := "test-resource-limit"
-
-	// Act
-	err := deployer.DeployWithResourceLimit(targetCluster, namespace, blueprint, resourceLimit)
-
-	// Assert
-	assert.Error(t, err)
-}
-```
-
-## Risk register
-
-1. **Resource limit conflict**: The deployment may fail due to resource limit conflicts. **Detection**: Check the error message for resource limit conflicts. **Mitigation**: Implement a mechanism to detect and handle resource limit conflicts.
-2. **Deployment log storage**: The deployment logs may not be stored correctly. **Detection**: Check the deployment logs for completeness and accuracy. **Mitigation**: Implement a mech
+| Risk | Detection | Mitigation |
+|------|-----------|------------|
+| Incorrect cluster/namespace mapping | Verify logs and audit entries | Add validation layer before apply |
+| Resource limit mis‑calculation | Unit test with boundary values | Use Kubernetes API to fetch limits before apply |
+| Service name conflict not caught | Integration test with pre‑existing service | Pre‑deploy check and unique naming strategy |
+| Dry‑run not truly saf
