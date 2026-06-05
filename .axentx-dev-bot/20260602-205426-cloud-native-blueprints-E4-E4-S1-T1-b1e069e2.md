@@ -526,7 +526,7 @@ security PASS (findings=0)
 
 RETRY (2/8): LLM failed: Remote end closed connection without response
 
-## qa — qa @ 2026-06-04T17:41:44.133960Z
+## qa — qa @ 2026-06-04T22:47:48.717731Z
 
 **PASS:**
 
