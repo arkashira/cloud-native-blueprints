@@ -551,7 +551,7 @@ Note: Some minor tests and documentation may still be missing, but these are not
 
 security PASS (findings=0)
 
-## qa — qa @ 2026-06-04T23:51:14.680861Z
+## qa — qa @ 2026-06-05T05:38:35.304794Z
 
 PASS: The requested TDD‑style test plan for the new `deploy` CLI command is provided below.  
 
