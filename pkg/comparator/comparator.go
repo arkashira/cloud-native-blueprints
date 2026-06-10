@@ -1,0 +1,2 @@
+#### Verification
+To verify that the implementation is correct, we will run the tests using the command `pytest tests/`. If the tests pass, it indicates that the implementation is correct and addresses the reviewer's feedback.
