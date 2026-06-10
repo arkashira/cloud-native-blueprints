@@ -1,68 +1,31 @@
-#!/usr/bin/env python3
-"""
-Simple command‑line interface for the cloud‑native‑blueprints package.
-"""
+# test_readme_structure.py
+import re
+import pathlib
 
-import argparse
-import logging
-import sys
+README = pathlib.Path("cloud-native-blueprints/README.md").read_text()
 
-# --------------------------------------------------------------------------- #
-# Logging – “failed:” is never printed; we use structured logging instead.
-# --------------------------------------------------------------------------- #
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+def test_quick_start_section_exists():
+    assert "# Quick Start" in README
 
-# --------------------------------------------------------------------------- #
-# Helper – banner
-# --------------------------------------------------------------------------- #
-def _banner() -> str:
-    """Return a friendly banner string."""
-    return "cloud‑native‑blueprints v0.1.0 – Blueprint your cloud apps!"
+def test_quick_start_steps_count():
+    steps = re.findall(r"^\s*\d+\.\s", README, re.MULTILINE)
+    assert len(steps) == 5, f"Expected 5 steps, found {len(steps)}"
 
-# --------------------------------------------------------------------------- #
-# CLI entry point
-# --------------------------------------------------------------------------- #
-def cli(argv: list[str] | None = None) -> int:
-    """
-    Entry point for the CLI.
+def test_each_step_has_command_and_output():
+    for i in range(1, 6):
+        cmd_pattern = rf"^\s*{i}\.\s+`([^`]+)`"
+        out_pattern = rf"^\s*{i}\.\s+`[^`]+`\s+Output:\n```\n([^\n]+)\n```"
+        assert re.search(cmd_pattern, README, re.MULTILINE), f"Step {i} missing command"
+        assert re.search(out_pattern, README, re.MULTILINE), f"Step {i} missing expected output"
 
-    Parameters
-    ----------
-    argv : list[str] | None
-        Command‑line arguments excluding the script name. If ``None``,
-        ``sys.argv[1:]`` is used.
+def test_example_blueprints_section():
+    assert "## Example Blueprints" in README
+    workloads = ["microservices", "postgresql", "redis"]
+    for wl in workloads:
+        assert f"- {wl}" in README, f"Missing example for {wl}"
 
-    Returns
-    -------
-    int
-        Exit code (0 for success).
-    """
-    parser = argparse.ArgumentParser(
-        prog="cloud-native-blueprints",
-        description="Create, version, and manage cloud‑native application blueprints.",
-    )
-    parser.add_argument(
-        "--version",
-        action="store_true",
-        help="Print the package version and exit.",
-    )
-
-    args = parser.parse_args(argv)
-
-    if args.version:
-        print("cloud-native-blueprints 0.1.0")
-        return 0
-
-    print(_banner())
-    return 0
-
-
-# --------------------------------------------------------------------------- #
-# If executed as a script
-# --------------------------------------------------------------------------- #
-if __name__ == "__main__":
-    sys.exit(cli())
+def test_troubleshooting_section():
+    assert "## Troubleshooting" in README
+    issues = ["Authentication", "Missing CRDs", "Network Policy", "Resource Limits"]
+    for issue in issues:
+        assert issue in README, f"Missing troubleshooting for {issue}"
