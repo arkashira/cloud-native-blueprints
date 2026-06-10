@@ -1,2 +1,2 @@
-
-### `app/models.py`
+PyYAML>=6.0
+GitPython>=3.1.0

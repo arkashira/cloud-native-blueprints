@@ -1,0 +1,9 @@
+version: "1.0.0"
+infrastructure: k8s
+components:
+  api:
+    type: service
+    replicas: 3
+    resources:
+      cpu: "500m"
+      memory: "512Mi"

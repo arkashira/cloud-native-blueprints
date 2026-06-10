@@ -1,2 +1,3 @@
-# cloud-native-blueprints
-axentx product · Create a product that enables teams to blueprint and version cloud-native applications, addressing the need for a standardized approach to managing complex infrastructure configurations.
+
+The generated blueprint is stored in `.cloud-native-blueprints/blueprint.yaml`.  
+All version‑control operations are scoped to that hidden directory, keeping the rest of your project clean.
